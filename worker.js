@@ -6,38 +6,49 @@ export default {
 
 async function handleRequest(request) {
   const { pathname } = new URL(request.url);
+
+  if (pathname.indexOf('.') >= 0) {
+    return new Response("400 Bad Request.", {
+      status: 400,
+    });
+  }
+
   const b23 = 'https://b23.tv' + pathname;
 
   const paramsToReserve = [
     'p', 'page', 't', 'itemsId', 'tab', 'topic_id', 'vote_id'
   ];
 
-  let strippedUrl;
-  let text;
+  let returned;
 
   await fetch(b23, {
     redirect: "manual",
   })
     .then((response) => {
       let headers = new Headers(response.headers);
-      let url = new URL(headers.get('Location'));
-      strippedUrl = new URL(url.origin + url.pathname);
-      for (const k of paramsToReserve) {
-        let v = url.searchParams.get(k);
-        if (v) {
-          strippedUrl.searchParams.append(k, v);
+      let s = headers.get('Location');
+      if (s) {
+        let url = new URL(s);
+        let strippedUrl = new URL(url.origin + url.pathname);
+        for (const k of paramsToReserve) {
+          let v = url.searchParams.get(k);
+          if (v) {
+            strippedUrl.searchParams.append(k, v);
+          }
         }
+        returned = new Response(`<a href="${s}">Found.</a>`, {
+          status: 302,
+          headers: {
+            'Content-Type': 'application/html; charset=utf-8',
+            'Location': strippedUrl.toString(),
+          },
+        });
+      } else {
+        returned = new Response("400 Bad Request.", {
+          status: 400,
+        });
       }
-      return response.text();
-    })
-    .then((t) => {
-      text = t;
     });
 
-  return new Response(text, {
-    status: 302,
-    headers: {
-      'Location': strippedUrl.toString(),
-    }
-  });
+  return returned;
 }
